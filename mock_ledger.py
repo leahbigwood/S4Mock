@@ -47,7 +47,7 @@ def load_mxxl(nside=32, subsample=1):
 
     return  mxxl
     
-def create_mock_ledger_hp(outdir, healpix=4883, nside=64, mxxl=None, overwrite=False):    
+def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, overwrite=False):    
     # TODO: Check nside matches desitarget file split NSIDE.     
     if mxxl == None:
         mxxl = load_mxxl()
