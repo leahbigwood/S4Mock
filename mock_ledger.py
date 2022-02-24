@@ -1,33 +1,39 @@
 # Get rid of the libraries that aren't required, e.g. pyplot.
 import os
 import sys
-import math
-import argparse
 import healpy as hp
-import pandas as pd
 import numpy  as np
-import matplotlib.gridspec as gridspec
+import h5py
 
 from   astropy.io import fits as fits
 from   astropy.table import Table
-from   astropy import constants as const
-from   astropy import units as u
-from   astropy.table import QTable
+from desitarget.targets import encode_targetid
 
 sys.path.append(os.environ['HOME'] + '/LSS/py')
 
-import LSS
-import LSS.SV3
-import LSS.SV3.cattools as cattools
-
 from   desitarget.sv3.sv3_targetmask import desi_mask, bgs_mask, mws_mask
 from   desitarget.geomask import get_imaging_maskbits 
-from   LSS.SV3.cattools import tile2rosette
 
 
 def load_mxxl(nside=32, subsample=1):
-    fpath = '/global/cscratch1/sd/mjwilson/desi/BGS/lumfn/MXXL/bright_v0.9.fits'
-    mxxl  = Table.read(fpath)
+    
+    root  = "/global/project/projectdirs/desi/mocks/bgs/MXXL/small/"
+    root  = "./"
+
+    fpath = root + "galaxy_catalogue_small.hdf5"
+
+    print(fpath)
+
+    f   = h5py.File(fpath, mode='r')
+
+    ra  = f["Data/ra"][...]
+    dec = f["Data/dec"][...]
+    z   = f["Data/z_obs"][...]
+    r   = f["Data/app_mag"][...]
+
+    temp = np.c_[ra, dec, z, r]
+
+    mxxl = Table(temp, names=['RA', 'DEC','Z_OBS','APP_MAG'])
 
     mxxl  = mxxl[::subsample]
     
@@ -41,7 +47,7 @@ def load_mxxl(nside=32, subsample=1):
 
     return  mxxl
     
-def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=False):    
+def create_mock_ledger_hp(outdir, healpix=4883, nside=64, mxxl=None, overwrite=False):    
     # TODO: Check nside matches desitarget file split NSIDE.     
     if mxxl == None:
         mxxl = load_mxxl()
@@ -49,11 +55,12 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
     # E.g. /global/cfs/cdirs/desi/survey/catalogs/SV3/LSS//altmtl/debug_jl/alt_mtls_run128/Univ000/sv3/bright/sv3mtl-bright-hp-2286.ecsv
     opath = outdir + '/sv3mtl-bright-hp-{:d}.ecsv'.format(healpix)
 
+    
     if os.path.isfile(opath) & ~overwrite:
         print(f'Warning: {opath} exists; skipping.')
 
         return 0
-        
+      
     npix       = hp.nside2npix(nside)
     pixel_area = hp.nside2pixarea(nside,degrees=True)
 
@@ -63,15 +70,23 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
     single_pixel_mxxl = mxxl[single_mask]
     
     #true/false array for bright/faint objects
-    single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['RMAG_DRED'] <= 19.5
-    single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['RMAG_DRED'] > 19.5) & (single_pixel_mxxl['RMAG_DRED'] <= 20.175)
+    single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5
+    single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5) & (single_pixel_mxxl['APP_MAG'] <= 20.175)
     
     print('Selected {:.3f} as BGS Bright'.format(np.mean(single_pixel_mxxl['BGS_BRIGHT'])))
     
     #TODO: what is the resulting target density. 
     
+    #set targetids
+    nobj = len(single_pixel_mxxl)
+    objid = np.arange(nobj)
+    single_pixel_mxxl['TARGETID'] = encode_targetid(objid=objid, brickid=healpix, mock=1)
+
+    single_pixel_mxxl['Z'] = -1.
+
     #set subpriorities for all 
     single_pixel_mxxl['SUBPRIORITY'] = np.random.uniform(0, 1, len(single_pixel_mxxl))
+
     
     #set some other headings for all
     for x in ['PARALLAX', 'PMRA', 'PMDEC', 'REF_EPOCH']:
@@ -165,7 +180,7 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
     # PRIORITY = PRIORITY_INIT  
 
     #be careful with target ids overlapping for faint and bright targets???
-    prev_maxtid=0 
+ 
 
     for i, row in enumerate(single_pixel_mxxl):
         t.add_row((row['RA'],\
@@ -176,21 +191,21 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
                    row['REF_EPOCH'],\
                    row['SV3_DESI_TARGET'],\
                    row['SV3_BGS_TARGET'],\
-                   0,\  # MWS_TARGET
-                   prev_maxtid,\
+                   0,# MWS_TARGET \  
+                   row['TARGETID'],\
                    row['SUBPRIORITY'],\
-                   516,\ # OBSCONDITIONS
+                   516,# OBSCONDITIONS\ 
                    row['PRIORITY_INIT'],\
-                   3,\ # NUMOBS_INIT - not 9.
+                   3,# NUMOBS_INIT - not 9.\ 
                    row['PRIORITY'],\
-                   0,\ # NUMOBS 
-                   3,\ # NUMOBS_MORE - not 9.
+                   0,# NUMOBS \ 
+                   3,# NUMOBS_MORE - not 9.\ 
                    row['Z'],\
-                   -1,\ # ZWARN
-                   '2021-04-04T23:05:09',\ # TIMESTAMP
-                   '0.57.0',\ # VERSION
-                   'BGS|UNOBS',\ # TARGET STATE 
-                   -1,\ # ZTILEID
+                   -1, # ZWARN\
+                   '2021-04-04T23:05:09',# TIMESTAMP\ 
+                   '0.57.0', # VERSION\
+                   'BGS|UNOBS',# TARGET STATE \ 
+                   -1, # ZTILEID\
                    0)) # SC3_SCND_TARGET
 
     t.meta['ISMOCK']     = 1 
@@ -198,15 +213,15 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
     t.meta['OBSCON']     = 'BRIGHT'
     t.meta['FILENSID']   = 32
     
-    # t.meta['OVERRIDE'] = 'False'
+    t.meta['OVERRIDE'] = 'False'
 
     # HACK
-    t['TARGETID']        = 1000 * healpix + np.arange(len(t))
+    #t['TARGETID']        = 1000 * healpix + np.arange(len(t))
+    
     
     print(f'Writing {opath}')
 
     o = Table(t, copy=True)
-    o['Z'] = -1.
     
     o.write(opath, format='ascii.ecsv', overwrite=overwrite)
 
@@ -219,7 +234,8 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
     t['TARGETID', 'Z'].write(opath, format='ascii.ecsv', overwrite=overwrite)
     
     return  0
-
+    
+    
 
 if __name__ == '__main__':
     # python mock_ledger.py --healpixel 1 --nside 32
@@ -235,10 +251,11 @@ if __name__ == '__main__':
     overwrite = args.overwrite
     outdir    = args.outdir 
 
-    mxxl      = load_mxxl(subsample=100)
+    mxxl      = load_mxxl()
 
-    hps       = [6399, 6570, 6741, 6743, 6912, 6914]
-    hps      += [6398, 6399, 6570, 6740, 6741, 6743, 6912, 6914]
+    #hps       = [6399, 6570, 6741, 6743, 6912, 6914]
+    #hps      += [6398, 6399, 6570, 6740, 6741, 6743, 6912, 6914]
+    hps = [4883]
     
     for ii in hps:
         create_mock_ledger_hp(outdir, healpix=ii, nside=nside, mxxl=mxxl, overwrite=overwrite)
