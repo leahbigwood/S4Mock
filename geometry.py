@@ -1,5 +1,6 @@
 import healpy as hp
 import numpy as np
+from desitarget.geomask import get_imaging_maskbits
 
 
 def radec2pix(ra, dec, nside=32):
@@ -16,8 +17,8 @@ def hp_props(nside):
 
     return npix, pixel_area
 
-def targ_hpmap(targs, norm=None, nside=32):
-    pix = radec2pix(ra, dec, nside=nside)
+def targ_hpmap(targs, norm=None, nside=32, return_pix=False):
+    pix = radec2pix(targs['RA'], targs['DEC'], nside=nside)
     
     #indice of filled pixels and corrosponding targets in pixel
     filled_pixel_index, filled_targets_per_pixel = np.unique(pix, return_counts=True) 
@@ -29,10 +30,16 @@ def targ_hpmap(targs, norm=None, nside=32):
     target_pixel_density[filled_pixel_index] = filled_targets_per_pixel 
     target_pixel_density[target_pixel_density == 0] = np.NaN
 
-    if norm != None:
-        target_pixel_density /= norm
+    if norm is not None:
+        
+        for i in range(len(norm)):
+            target_pixel_density[i] /= norm[i]
     
-    return  target_pixel_density
+    if return_pix:
+        return target_pixel_density,np.unique(pix)
+    
+    else:
+        return  target_pixel_density
 
 def rand_inrect(ra_lower, ra_upper, dec_lower,dec_upper,nside=32):
     ra_rand = np.random.uniform(ra_lower,ra_upper,100)
@@ -45,4 +52,30 @@ def rand_inrect(ra_lower, ra_upper, dec_lower,dec_upper,nside=32):
     all_pixel_indices = hp.ang2pix(nside, theta, phi,nest=True, lonlat=False)
     
     return np.unique(all_pixel_indices)
+
+def bgs_mask_randoms(random):    
+
+    # Apply custom imaging mask around bright stars etc.   
+    bitnamelist = ["BRIGHT", "CLUSTER"] 
+
+    bits = get_imaging_maskbits(bitnamelist) 
+
+    print(bits)
+    
+    retain_random = np.ones(len(random['MASKBITS']), dtype=bool) #got rid of .data as didnt work below 
+
+    for bit, ttype in zip(bits, bitnamelist): 
+        # Keep random if bit not set for bits corresponding to BRIGHT and CLUSTER. 
+        retain_random &= ((random['MASKBITS'] & 2**bit) == 0)  
+
+        print(ttype, bit, np.mean(retain_random))
+
+    #other cuts
+    NOBS_mask = ((random['NOBS_G'] > 0) | (random['NOBS_R'] > 0) | (random['NOBS_Z'] > 0))
+    
+    retain_random = retain_random & NOBS_mask
+ 
+    print('NOBS', np.mean(retain_random))
+
+    return random[retain_random]
     
