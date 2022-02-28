@@ -176,22 +176,22 @@ def create_mock_ledger_hp(outdir, healpix=2286, nside=32, mxxl=None, overwrite=F
                    row['REF_EPOCH'],\
                    row['SV3_DESI_TARGET'],\
                    row['SV3_BGS_TARGET'],\
-                   0,\  # MWS_TARGET
+                   0,\
                    prev_maxtid,\
                    row['SUBPRIORITY'],\
-                   516,\ # OBSCONDITIONS
+                   516,\
                    row['PRIORITY_INIT'],\
-                   3,\ # NUMOBS_INIT - not 9.
+                   3,\
                    row['PRIORITY'],\
-                   0,\ # NUMOBS 
-                   3,\ # NUMOBS_MORE - not 9.
+                   0,\
+                   3,\
                    row['Z'],\
-                   -1,\ # ZWARN
-                   '2021-04-04T23:05:09',\ # TIMESTAMP
-                   '0.57.0',\ # VERSION
-                   'BGS|UNOBS',\ # TARGET STATE 
-                   -1,\ # ZTILEID
-                   0)) # SC3_SCND_TARGET
+                   -1,\
+                   '2021-04-04T23:05:09',\
+                   '0.57.0',\
+                   'BGS|UNOBS',\
+                   -1,\
+                   0)) 
 
     t.meta['ISMOCK']     = 1 
     t.meta['SURVEY']     = 'sv3'
