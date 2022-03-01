@@ -18,14 +18,15 @@ from   geometry import radec2pix
 
 
     
-def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, small=True, overwrite=False):    
+def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=read_mxxl(small=False), overwrite=False):    
     # TODO: Check nside matches desitarget file split NSIDE.     
+    """
     if mxxl == None:
         if small==True:
             mxxl = read_mxxl(small=True)
         elif small==False:
             mxxl = read_mxxl(small=False)
-
+    """
     if outdir ==None:
         
         npix       = hp.nside2npix(nside)
@@ -37,8 +38,8 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, small=True,
         single_pixel_mxxl = mxxl[single_mask]
 
         #true/false array for bright/faint objects
-        single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5
-        single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5) & (single_pixel_mxxl['APP_MAG'] <= 20.175)
+        single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5952
+        single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5952) & (single_pixel_mxxl['APP_MAG'] <= 20.003)
 
         print('Selected {:.3f} as BGS Bright'.format(np.mean(single_pixel_mxxl['BGS_BRIGHT'])))
 
@@ -203,8 +204,8 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, small=True,
         single_pixel_mxxl = mxxl[single_mask]
 
         #true/false array for bright/faint objects
-        single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5
-        single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5) & (single_pixel_mxxl['APP_MAG'] <= 20.175)
+        single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5952
+        single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5952) & (single_pixel_mxxl['APP_MAG'] <= 20.003)
 
         print('Selected {:.3f} as BGS Bright'.format(np.mean(single_pixel_mxxl['BGS_BRIGHT'])))
 

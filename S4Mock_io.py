@@ -280,6 +280,24 @@ def read_desitargetrandoms(number=1):
     rand = np.hstack([fitsio.read(f'/global/cfs/cdirs/desi/target/catalogs/dr9/0.49.0/randoms/resolve/randoms-{nn}-0.fits', columns=min_cols) for nn in ns])
     return rand 
 
+def tile2rosette(tile):
+    if tile < 433:
+        return (tile-1)//27
+    else:
+        if tile >= 433 and tile < 436:
+            return 13
+        if tile >= 436 and tile < 439:
+            return 14
+        if tile >= 439 and tile < 442:
+            return 15
+        if tile >= 442 and tile <=480:
+            return (tile-442)//3
+            
+        if tile > 480:
+            return tile//30    
+    return 999999 #shouldn't be any more?
+
+
 def read_sv3tiles():
     tiles = Table.read('/global/cscratch1/sd/mjwilson/S4MOCK/tiles-sv3.ecsv')
     tiles = tiles[(tiles['STATUS'] == 'done') & (tiles['PROGRAM']=='BRIGHT')]
