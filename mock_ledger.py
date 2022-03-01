@@ -13,50 +13,18 @@ sys.path.append(os.environ['HOME'] + '/LSS/py')
 
 from   desitarget.sv3.sv3_targetmask import desi_mask, bgs_mask, mws_mask
 from   desitarget.geomask import get_imaging_maskbits 
-from S4Mock_io import read_sv3tiles
+from S4Mock_io import read_sv3tiles,read_mxxl
 from   geometry import radec2pix
 
 
-
-#so can either load in small version, or do read_mxxl from S4Mock_io
-def load_mxxl(nside=32, subsample=1):
     
-    root  = "/global/project/projectdirs/desi/mocks/bgs/MXXL/small/"
-    root  = "./"
-
-    fpath = root + "galaxy_catalogue_small.hdf5"
-
-    print(fpath)
-
-    f   = h5py.File(fpath, mode='r')
-
-    ra  = f["Data/ra"][...]
-    dec = f["Data/dec"][...]
-    z   = f["Data/z_obs"][...]
-    r   = f["Data/app_mag"][...]
-
-    temp = np.c_[ra, dec, z, r]
-
-    mxxl = Table(temp, names=['RA', 'DEC','Z_OBS','APP_MAG'])
-
-    mxxl  = mxxl[::subsample]
-    
-    theta = np.pi / 2. - np.radians(mxxl['DEC'].data)
-    phi   = np.radians(mxxl['RA'].data)
-
-    mxxl['HPX'] = hp.ang2pix(nside, theta, phi,nest=True, lonlat=False)
-
-    # single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['RMAG_DRED'] <= 19.5
-    # single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['RMAG_DRED'] > 19.5) & (single_pixel_mxxl['RMAG_DRED'] <= 20.175)
-
-    return  mxxl
-
-
-    
-def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, overwrite=False):    
+def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, small=True, overwrite=False):    
     # TODO: Check nside matches desitarget file split NSIDE.     
     if mxxl == None:
-        mxxl = load_mxxl()
+        if small==True:
+            mxxl = read_mxxl(small=True)
+        elif small==False:
+            mxxl = read_mxxl(small=False)
 
     if outdir ==None:
         
@@ -190,22 +158,22 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, overwrite=F
                        row['REF_EPOCH'],\
                        row['SV3_DESI_TARGET'],\
                        row['SV3_BGS_TARGET'],\
-                       0,# MWS_TARGET \  
+                       0,\
                        row['TARGETID'],\
                        row['SUBPRIORITY'],\
-                       516,# OBSCONDITIONS\ 
+                       516,\
                        row['PRIORITY_INIT'],\
-                       3,# NUMOBS_INIT - not 9.\ 
+                       3,\
                        row['PRIORITY'],\
-                       0,# NUMOBS \ 
-                       3,# NUMOBS_MORE - not 9.\ 
+                       0,\
+                       3,\
                        row['Z'],\
-                       -1, # ZWARN\
-                       '2021-04-04T23:05:09',# TIMESTAMP\ 
-                       '0.57.0', # VERSION\
-                       'BGS|UNOBS',# TARGET STATE \ 
-                       -1, # ZTILEID\
-                       0)) # SC3_SCND_TARGET
+                       -1,\
+                       '2021-04-04T23:05:09',\
+                       '0.57.0',\
+                       'BGS|UNOBS',\
+                       -1,\
+                       0))
 
         t.meta['ISMOCK']     = 1 
         t.meta['SURVEY']     = 'sv3'
@@ -356,22 +324,22 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=None, overwrite=F
                        row['REF_EPOCH'],\
                        row['SV3_DESI_TARGET'],\
                        row['SV3_BGS_TARGET'],\
-                       0,# MWS_TARGET \  
+                       0,\
                        row['TARGETID'],\
                        row['SUBPRIORITY'],\
-                       516,# OBSCONDITIONS\ 
+                       516,\
                        row['PRIORITY_INIT'],\
-                       3,# NUMOBS_INIT - not 9.\ 
+                       3,\
                        row['PRIORITY'],\
-                       0,# NUMOBS \ 
-                       3,# NUMOBS_MORE - not 9.\ 
+                       0,\
+                       3,\
                        row['Z'],\
-                       -1, # ZWARN\
-                       '2021-04-04T23:05:09',# TIMESTAMP\ 
-                       '0.57.0', # VERSION\
-                       'BGS|UNOBS',# TARGET STATE \ 
-                       -1, # ZTILEID\
-                       0)) # SC3_SCND_TARGET
+                       -1,\
+                       '2021-04-04T23:05:09',\
+                       '0.57.0',\
+                       'BGS|UNOBS',\
+                       -1,\
+                       0)) 
 
         t.meta['ISMOCK']     = 1 
         t.meta['SURVEY']     = 'sv3'
@@ -426,7 +394,7 @@ if __name__ == '__main__':
 
     print(hps)
 
-    mxxl      = load_mxxl(subsample=1)
+    mxxl      = read_mxxl()
     
     for ii in hps:
         try:
