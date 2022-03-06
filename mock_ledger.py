@@ -18,7 +18,7 @@ from   geometry import radec2pix
 
 
     
-def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=read_mxxl(small=False), overwrite=False):    
+def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):    
     # TODO: Check nside matches desitarget file split NSIDE.     
     """
     if mxxl == None:
@@ -28,11 +28,6 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=read_mxxl(small=F
             mxxl = read_mxxl(small=False)
     """
     if outdir ==None:
-        
-        npix       = hp.nside2npix(nside)
-        pixel_area = hp.nside2pixarea(nside,degrees=True)
-
-        print('npix: {}; pixel_area: {} for nside: {}'.format(npix, pixel_area, nside))
 
         single_mask = (mxxl['HPX'].data == healpix)
         single_pixel_mxxl = mxxl[single_mask]
@@ -195,10 +190,6 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=read_mxxl(small=F
 
             return 0
       
-        npix       = hp.nside2npix(nside)
-        pixel_area = hp.nside2pixarea(nside,degrees=True)
-
-        print('npix: {}; pixel_area: {} for nside: {}'.format(npix, pixel_area, nside))
 
         single_mask = (mxxl['HPX'].data == healpix)
         single_pixel_mxxl = mxxl[single_mask]
@@ -368,6 +359,8 @@ def create_mock_ledger_hp(outdir, healpix=4883, nside=32, mxxl=read_mxxl(small=F
         t['TARGETID', 'Z'].write(opath, format='ascii.ecsv', overwrite=overwrite)
 
         return  0
+
+
 
     
 
