@@ -1,7 +1,9 @@
 import numpy as np
+import healpy as hp
 
-
-def radec2pix(ra, dec, nside=32, unique=False):
+def radec2pix(targets, nside=32, unique=False):
+    ra = targets['RA']
+    dec = targets['DEC']
     theta = np.pi / 2. - np.radians(dec)
     phi   = np.radians(ra)
 
@@ -9,8 +11,6 @@ def radec2pix(ra, dec, nside=32, unique=False):
 
     if unique:
         pix = np.unique(pix)
-
-
     
     return pix
 
@@ -20,7 +20,7 @@ def hp_props(nside):
     return npix, pixel_area
 
 def targ_hpmap(targs, norm=None, nside=32):
-    pix = radec2pix(ra, dec, nside=nside)
+    pix = radec2pix(targs, nside=nside)
     
     #indice of filled pixels and corrosponding targets in pixel
     filled_pixel_index, filled_targets_per_pixel = np.unique(pix, return_counts=True) 
