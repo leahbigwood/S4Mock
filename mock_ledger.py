@@ -19,14 +19,7 @@ from   geometry import radec2pix
 
     
 def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):    
-    # TODO: Check nside matches desitarget file split NSIDE.     
-    """
-    if mxxl == None:
-        if small==True:
-            mxxl = read_mxxl(small=True)
-        elif small==False:
-            mxxl = read_mxxl(small=False)
-    """
+   
     if outdir ==None:
 
         single_mask = (mxxl['HPX'].data == healpix)

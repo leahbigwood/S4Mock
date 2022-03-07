@@ -8,8 +8,12 @@ import pandas as pd
 import fitsio
 import h5py
 import healpy as hp
-
-
+from desimodel.footprint import is_point_in_desi, tiles2pix
+from desitarget.geomask import pixarea2nside
+import sys
+import healpy as hp
+sys.path.append('/global/homes/l/lbigwood/S4Mock/')
+import geometry
 from   astropy.table import Table, vstack
 
 
@@ -354,3 +358,25 @@ def read_mxxl(small=True,nside=32):
     # single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['RMAG_DRED'] > 19.5) & (single_pixel_mxxl['RMAG_DRED'] <= 20.175)
 
     return  mxxl
+
+def read_mxxl_v2():
+
+    #read targets in 
+    #get tiles
+    tiles = read_sv3tiles()
+    # closest nside to DESI tile area of ~7 deg
+    nside = pixarea2nside(7.)
+    # ADM determine the pixels that touch the tiles.
+    pixlist = tiles2pix(nside, tiles=tiles)
+    #read in mxxl
+    mxxl =read_mxxl(small=False,nside=nside)
+    #read in our mxxl targets but having this nside and this pixlist 
+    targets = mxxl[np.in1d(mxxl['HPX'],pixlist)]
+    #restrict only to targets in the requested tiles...
+    ii = is_point_in_desi(tiles, targets["RA"], targets["DEC"])
+    targets = targets[ii]
+    #now get pixlist in nside=32
+    pix32 = geometry.radec2pix(targets,nside=32)
+    targets['HPX']=pix32
+    
+    return targets
