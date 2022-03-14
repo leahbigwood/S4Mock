@@ -3,7 +3,7 @@ import glob
 import desitarget
 import numpy as np
 from astropy.io import fits as fits
-from desitarget.targets import desi_mask, bgs_mask, mws_mask 
+from desitarget.targets import desi_mask, bgs_mask, mws_mask #sv3!
 import pandas as pd
 import fitsio
 import h5py
@@ -14,7 +14,8 @@ import sys
 import healpy as hp
 sys.path.append('/global/homes/l/lbigwood/S4Mock/')
 import geometry
-from   astropy.table import Table, vstack
+from   astropy.table import Table, vstack, unique
+from ros_tools import tile2rosette
 
 
 def read_mainsurvey_targets_bright(pixlist=None):
@@ -380,3 +381,28 @@ def read_mxxl_v2():
     targets['HPX']=pix32
     
     return targets
+
+nights    = [x.split('/')[-1] for x in sorted(glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3' + '/*'))]
+
+def read_favail_mock():
+    return vstack([Table(fits.open(x)['FAVAIL'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}/fba-*.fits')])
+
+def read_fassign_mock():
+    return vstack([Table(fits.open(x)['FASSIGN'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}/fba-*.fits')])
+
+def read_targ_mock():
+    return vstack([Table.read(x) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}//*-targ.fits')])
+
+def read_sv3_randoms(number=1):
+    if number ==1:
+        rand = Table.read('/global/cfs/cdirs/desi/survey/catalogs/SV3/LSS/random0/rancomb_brightwdup_Alltiles.fits')
+        rand             = unique(rand, keys='TARGETID')
+        return rand
+    else:
+        return vstack([Table.read(x) for x in glob.glob('/global/cfs/cdirs/desi/survey/catalogs/SV3/LSS/random*/rancomb_brightwdup_Alltiles.fits')])
+
+def read_mock_ledger():
+    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/sv3/bright/sv3mtl-bright-hp-*.ecsv')])
+
+def read_init_ledger():
+    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/sv3/bright/initial/sv3mtl-bright-hp-*.ecsv')])

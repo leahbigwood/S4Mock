@@ -6,7 +6,7 @@ import numpy  as np
 import h5py
 
 from   astropy.io import fits as fits
-from   astropy.table import Table
+from   astropy.table import Table,vstack
 from desitarget.targets import encode_targetid
 
 sys.path.append(os.environ['HOME'] + '/LSS/py')
@@ -15,6 +15,13 @@ from   desitarget.sv3.sv3_targetmask import desi_mask, bgs_mask, mws_mask
 from   desitarget.geomask import get_imaging_maskbits 
 from S4Mock_io import read_sv3tiles,read_mxxl
 from   geometry import radec2pix
+
+import sys
+sys.path.append('/global/homes/l/lbigwood/S4Mock/')
+import S4Mock_io
+
+from desimodel.footprint import is_point_in_desi, tiles2pix
+from desitarget.geomask import pixarea2nside
 
 
     
@@ -26,6 +33,7 @@ def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):
         single_pixel_mxxl = mxxl[single_mask]
 
         #true/false array for bright/faint objects
+        single_pixel_mxxl = single_pixel_mxxl[(single_pixel_mxxl['APP_MAG'] <= 20.003)]
         single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5952
         single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5952) & (single_pixel_mxxl['APP_MAG'] <= 20.003)
 
@@ -164,6 +172,19 @@ def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):
                        -1,\
                        0))
 
+        
+        real_ledger = Table.read('/global/cscratch1/sd/mjwilson/S4MOCK/SV3REAL/SV3REALLEDGER/bright/sv3mtl-bright-hp-{:d}.ecsv'.format(healpix)) 
+        
+        tiles = S4Mock_io.read_sv3tiles()
+        ii = is_point_in_desi(tiles, real_ledger["RA"], real_ledger["DEC"])
+        real_ledger = real_ledger[ii]
+        
+        is_mws= ((real_ledger['SV3_DESI_TARGET'] & desi_mask['MWS_ANY']) != 0) & (real_ledger['PRIORITY']==real_ledger['PRIORITY_INIT'])
+        mws = real_ledger[is_mws]
+        
+        t = vstack([t,mws])
+        
+        
         t.meta['ISMOCK']     = 1 
         t.meta['SURVEY']     = 'sv3'
         t.meta['OBSCON']     = 'BRIGHT'
@@ -188,6 +209,7 @@ def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):
         single_pixel_mxxl = mxxl[single_mask]
 
         #true/false array for bright/faint objects
+        single_pixel_mxxl = single_pixel_mxxl[(single_pixel_mxxl['APP_MAG'] <= 20.003)]
         single_pixel_mxxl['BGS_BRIGHT'] = single_pixel_mxxl['APP_MAG'] <= 19.5952
         single_pixel_mxxl['BGS_FAINT']  = (single_pixel_mxxl['APP_MAG'] > 19.5952) & (single_pixel_mxxl['APP_MAG'] <= 20.003)
 
@@ -326,6 +348,17 @@ def create_mock_ledger_hp(outdir, healpix, mxxl, overwrite=False):
                        -1,\
                        0)) 
 
+        real_ledger = Table.read('/global/cscratch1/sd/mjwilson/S4MOCK/SV3REAL/SV3REALLEDGER/bright/sv3mtl-bright-hp-{:d}.ecsv'.format(healpix)) 
+        
+        tiles = S4Mock_io.read_sv3tiles()
+        ii = is_point_in_desi(tiles, real_ledger["RA"], real_ledger["DEC"])
+        real_ledger = real_ledger[ii]
+        
+        is_mws= ((real_ledger['SV3_DESI_TARGET'] & desi_mask['MWS_ANY']) != 0) & (real_ledger['PRIORITY']==real_ledger['PRIORITY_INIT'])
+        mws = real_ledger[is_mws]
+        
+        t = vstack([t,mws])
+        
         t.meta['ISMOCK']     = 1 
         t.meta['SURVEY']     = 'sv3'
         t.meta['OBSCON']     = 'BRIGHT'
