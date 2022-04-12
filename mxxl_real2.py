@@ -4,7 +4,7 @@ sys.path.append('/global/project/projectdirs/desi/mocks/bgs/MXXL/one_percent')
 import footprint 
 import h5py
 import S4Mock_io
-from corr_func_tools2 import calc_wtheta,create_axes
+from corr_func_tools import calc_wtheta,create_axes
 import numpy as np
 from astropy.table import Table
 
@@ -23,7 +23,7 @@ def read_mxxl_real():
 
 def read_mxxl_real_rand():
     version =2 
-    Ngal=1000000
+    Ngal=3000000
 
     if version==2:
         tiles_file = "/project/projectdirs/desi/mocks/bgs/MXXL/one_percent/tiles/v2/tiles-sv3.ecsv"
