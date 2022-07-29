@@ -17,6 +17,87 @@ import geometry
 from   astropy.table import Table, vstack, unique
 from ros_tools import tile2rosette
 
+def read_mainsurvey_targets(pixlist=None):
+    
+    
+    # What's the original path.
+    # select bright targets.
+    # calculate mags and ebv correction.
+    root = '/global/cfs/cdirs/desi/target/catalogs/dr9/1.1.1/targets/main/resolve/bright/'
+
+    if pixlist == None:
+        to_grab=glob.glob(root + 'targets-bright-hp-*.fits') 
+    else:
+        to_grab=[root + f'targets-bright-hp-{pix}.fits' for pix in pixlist]
+        
+    # very good practice to apply sorted, otherwise the file ordering will be random 	and non-repeatable.  
+    to_grab = sorted(to_grab) 
+
+    hp_stack = []
+
+    #do timer as takes a while
+    start = time.time() 
+
+
+
+    min_cols = ['RA','DEC','TARGETID', 'BGS_TARGET', 'MWS_TARGET','DESI_TARGET','PHOTSYS']
+    
+    #loop through pixels
+    for i, x in enumerate(to_grab):
+        # f = np.array(x[1].data)[]
+        f = fitsio.read(x,columns=min_cols)
+        
+        #idx = np.arange(len(x))[is_bgs]
+        #x = x.iloc[idx] 
+        hp_stack.append(f)
+
+        #more timing stuff
+        if (i % 20) == 0:
+            runtime = (time.time() - start)
+            print('Runtime of {:.6f} seconds after {:d} pixels'.format(runtime, i))
+
+    data_stack = np.concatenate(hp_stack)      
+
+    data_stack = Table(data_stack)
+    mask,idx = np.unique(data_stack['TARGETID'],return_index=True)
+    data_stack = data_stack[idx]
+    
+    # MW_TRANSMISSION_GRZ, EBV, 
+    # data_stack['RMAG_DRED'] = 22.5 - 2.5 * np.log10(flux / mwtrans)
+    # RMAG, GMAG, W1, ZMAG, RFIBMAG, 
+    return data_stack
+
+
+    """
+
+    min_cols = ['RA','DEC','TARGETID', 'SV3_BGS_TARGET', 'SV3_MWS_TARGET','SV3_DESI_TARGET']
+    
+    #loop through pixels
+    for i, x in enumerate(to_grab):
+        # f = np.array(x[1].data)[]
+        f = fitsio.read(x,columns=min_cols)
+        
+        #idx = np.arange(len(x))[is_bgs]
+        #x = x.iloc[idx] 
+        hp_stack.append(f)
+
+        #more timing stuff
+        if (i % 20) == 0:
+            runtime = (time.time() - start)
+            print('Runtime of {:.6f} seconds after {:d} pixels'.format(runtime, i))
+
+    data_stack = np.concatenate(hp_stack)      
+
+    data_stack = Table(data_stack)
+    mask,idx = np.unique(data_stack['TARGETID'],return_index=True)
+    data_stack = data_stack[idx]
+    
+    # MW_TRANSMISSION_GRZ, EBV, 
+    # data_stack['RMAG_DRED'] = 22.5 - 2.5 * np.log10(flux / mwtrans)
+    # RMAG, GMAG, W1, ZMAG, RFIBMAG, 
+    return data_stack
+    """
+
 
 def read_mainsurvey_targets_bright(pixlist=None):
     
@@ -43,7 +124,7 @@ def read_mainsurvey_targets_bright(pixlist=None):
     mmask = 'BGS_TARGET' # NOTE: SV3 targets.  
     ttype = 'BGS_BRIGHT' 
 
-    min_cols = ['RA','DEC','TARGETID', 'BGS_TARGET', 'MWS_TARGET','PHOTSYS']
+    min_cols = ['RA','DEC','TARGETID', 'DESI_TARGET','BGS_TARGET', 'MWS_TARGET','PHOTSYS']
     
     #loop through pixels
     for i, x in enumerate(to_grab):
@@ -151,7 +232,7 @@ def read_mainsurvey_ledgers(data=True, uniquetargs=True):
 
         #loop through pixels
         for i, x in enumerate(to_grab):
-            x = pd.read_csv(x, comment='#', delimiter='\s+', usecols=['RA', 'DEC', 'TARGETID', 'BGS_TARGET', 'MWS_TARGET'])
+            x = pd.read_csv(x, comment='#', delimiter='\s+') #usecols=['RA', 'DEC', 'TARGETID', 'BGS_TARGET', 'MWS_TARGET'])
 
             #mask for bgs objects
             is_bgs = (x[mmask] & bgs_mask[ttype]) != 0
@@ -222,6 +303,9 @@ def read_sv3_ledgers(mock=True, uniquetargs=True):
         data_stack = pd.concat(hp_stack, ignore_index=True)
 
         #unique targets only and put it in right table format
+        if uniquetargs==True:
+            mask,idx = np.unique(data_stack['TARGETID'],return_index=True)
+            data_stack = data_stack.iloc[idx]
         
         data_stack = Table.from_pandas(data_stack)
 
@@ -278,11 +362,11 @@ def read_sv3_ledgers(mock=True, uniquetargs=True):
 
 
 def read_desitargetrandoms(number=1):
-    ns = np.arange(1, number+1, 1)
+    ns = np.arange(0, number, 1)
     
     min_cols = ['RA' , 'DEC', 'MASKBITS', 'NOBS_G', 'NOBS_R', 'NOBS_Z']
     
-    rand = np.hstack([fitsio.read(f'/global/cfs/cdirs/desi/target/catalogs/dr9/0.49.0/randoms/resolve/randoms-{nn}-0.fits', columns=min_cols) for nn in ns])
+    rand = np.hstack([fitsio.read(f'/global/cfs/cdirs/desi/target/catalogs/dr9/0.49.0/randoms/resolve/randoms-1-{nn}.fits', columns=min_cols) for nn in ns])
     return rand 
 
 def tile2rosette(tile):
@@ -385,24 +469,78 @@ def read_mxxl_v2():
 nights    = [x.split('/')[-1] for x in sorted(glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3' + '/*'))]
 
 def read_favail_mock():
-    return vstack([Table(fits.open(x)['FAVAIL'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}/fba-*.fits')])
+    return vstack([Table(fits.open(x)['FAVAIL'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ001/fa/SV3/{night}/fba-*.fits')])
 
 def read_fassign_mock():
-    return vstack([Table(fits.open(x)['FASSIGN'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}/fba-*.fits')])
+    return vstack([Table(fits.open(x)['FASSIGN'].data) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ001/fa/SV3/{night}/fba-*.fits')])
 
 def read_targ_mock():
-    return vstack([Table.read(x) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/fa/SV3/{night}//*-targ.fits')])
+    return vstack([Table.read(x) for night in nights for x in glob.glob(f'/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ001/fa/SV3/{night}//*-targ.fits')])
 
 def read_sv3_randoms(number=1):
     if number ==1:
         rand = Table.read('/global/cfs/cdirs/desi/survey/catalogs/SV3/LSS/random0/rancomb_brightwdup_Alltiles.fits')
-        rand             = unique(rand, keys='TARGETID')
+        #rand             = unique(rand, keys='TARGETID')
         return rand
     else:
         return vstack([Table.read(x) for x in glob.glob('/global/cfs/cdirs/desi/survey/catalogs/SV3/LSS/random*/rancomb_brightwdup_Alltiles.fits')])
 
 def read_mock_ledger():
-    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/sv3/bright/sv3mtl-bright-hp-*.ecsv')])
+    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ001/sv3/bright/sv3mtl-bright-hp-*.ecsv')])
 
 def read_init_ledger():
-    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ000/sv3/bright/initial/sv3mtl-bright-hp-*.ecsv')])
+    return vstack([Table.read(x) for x in glob.glob('/global/cscratch1/sd/mjwilson/altmtls/ledger/initial/Univ001/sv3/bright/initial/sv3mtl-bright-hp-*.ecsv')])
+
+def read_mxxl_real():
+    mxxl = S4Mock_io.read_mxxl(small=False)
+
+    root  = "/global/cfs/cdirs/desi/mocks/bgs/MXXL/one_percent/"
+    fpath = root + "one_percent_v2.hdf5"
+    f     = h5py.File(fpath, mode='r')
+
+    # assert 
+    
+    mxxl['NMOCK'] = f['nmock'][:]
+
+    return mxxl
+
+def read_mxxl_real_rand():
+    version =2 
+    Ngal=1000000
+
+    if version==2:
+        tiles_file = "/project/projectdirs/desi/mocks/bgs/MXXL/one_percent/tiles/v2/tiles-sv3.ecsv"
+        Nmock = 36
+    elif version==1:
+        tiles_file = "/project/projectdirs/desi/mocks/bgs/MXXL/one_percent/tiles/v1/onepercent.fits"
+        Nmock = 96
+
+    # generate random galaxy ra, dec, then find galaxies in footprint                                                                             
+    #Ngal = 1000000                                                                                                                               
+    ra = np.random.rand(Ngal) * 360
+    sin_dec = np.random.rand(Ngal) * 2 - 1
+    dec = np.arcsin(sin_dec) * 180/np.pi
+
+    ra_array = []
+    dec_array = []
+    nmock_array = []
+
+    count = int(0)
+    for i in range(Nmock):
+        in_footprint = footprint.in_onepercent_footprint(ra, dec, tiles_file, nmock=i, version=version)
+        ra_array.append(ra[in_footprint])
+        dec_array.append(dec[in_footprint])
+        nmock_array.append([count]*len(ra[in_footprint]))
+        count +=1
+
+    ra_array = np.array(ra_array)
+    dec_array = np.array(dec_array)
+    nmock_array = np.array(nmock_array)
+
+
+    ra_array = np.concatenate(ra_array)
+    dec_array = np.concatenate(dec_array)
+    nmock_array = np.concatenate(nmock_array)
+
+    return Table(np.c_[ra_array, dec_array,nmock_array], names=['RA', 'DEC','NMOCK'],dtype=[np.float32,np.float32,np.int32])
+
